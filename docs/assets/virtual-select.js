@@ -1,5 +1,5 @@
 /*!
- * Virtual Select v1.0.46
+ * Virtual Select v1.0.47
  * https://sa-si-dev.github.io/virtual-select
  * Licensed under MIT (https://github.com/sa-si-dev/virtual-select/blob/master/LICENSE)
  *//******/ (function() { // webpackBootstrap
@@ -213,6 +213,18 @@ var Utils = /*#__PURE__*/function () {
     key: "containsHTML",
     value: function containsHTML(text) {
       return /<[a-z][\s\S]*>/i.test(text);
+    }
+
+    /**
+     * @static
+     * @param {string} text
+     * @return {boolean}
+     * @memberof Utils
+     */
+  }, {
+    key: "containsHTMLorJS",
+    value: function containsHTMLorJS(text) {
+      return /<([a-z]+)[\s\S]*?>|on\w+="[^"]*"/i.test(text);
     }
   }]);
 }();
@@ -3453,7 +3465,8 @@ var VirtualSelect = /*#__PURE__*/function () {
       if (!text || !this.enableSecureText) {
         return text;
       }
-      this.$secureText.nodeValue = text;
+      /** escape potentially harmful JavaScript so, label and value fields cannot trigger XSS */
+      this.$secureText.nodeValue = Utils.replaceDoubleQuotesWithHTML(text);
       return this.$secureDiv.innerHTML;
     }
   }, {
