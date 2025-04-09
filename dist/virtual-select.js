@@ -1,5 +1,5 @@
 /*!
- * Virtual Select v1.0.47
+ * Virtual Select v1.0.49
  * https://sa-si-dev.github.io/virtual-select
  * Licensed under MIT (https://github.com/sa-si-dev/virtual-select/blob/master/LICENSE)
  *//******/ (function() { // webpackBootstrap
@@ -453,6 +453,9 @@ var DomUtils = /*#__PURE__*/function () {
   }, {
     key: "setAria",
     value: function setAria($ele, name, value) {
+      if (!$ele) {
+        return;
+      }
       var attrName = name;
       if (attrName !== 'role') {
         attrName = "aria-".concat(attrName);
@@ -1058,8 +1061,7 @@ var VirtualSelect = /*#__PURE__*/function () {
     key: "onToggleButtonPress",
     value: function onToggleButtonPress(e) {
       e.stopPropagation();
-      var key = e.which || e.keyCode;
-      if (e.type === 'keydown' && key !== 13 && key !== 32) {
+      if (e.type === 'keydown' && e.code !== 'Enter' && e.code !== 'Space') {
         return;
       }
       var $target = e.target;
@@ -1149,8 +1151,7 @@ var VirtualSelect = /*#__PURE__*/function () {
     key: "onSearchClear",
     value: function onSearchClear(e) {
       e.stopPropagation();
-      var key = e.which || e.keyCode;
-      if (key === 13 || key === 32) {
+      if (e.code === 'Enter' || e.code === 'Space' || e.type === 'click') {
         this.setSearchValue('');
         this.focusSearchInput();
       }
