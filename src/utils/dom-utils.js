@@ -238,8 +238,10 @@ export class DomUtils {
    * @param {HTMLElement} $ele
    * @param {string} events
    * @param {Function} callback
+   * @param {Object} [context]
+   * @param {AbortController} [context.eventHandler]
    */
-  static addEvent($ele, events, callback) {
+  static addEvent($ele, events, callback, context) {
     if (!$ele) {
       return;
     }
@@ -250,7 +252,8 @@ export class DomUtils {
       const $eleArray = DomUtils.getElements($ele);
 
       $eleArray.forEach(($this) => {
-        $this.addEventListener(event, callback);
+        const options = context?.eventHandler ? { signal: context.eventHandler.signal } : undefined;
+        $this.addEventListener(event, callback, options);
       });
     });
   }

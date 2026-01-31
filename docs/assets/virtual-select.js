@@ -536,10 +536,12 @@ var DomUtils = /*#__PURE__*/function () {
      * @param {HTMLElement} $ele
      * @param {string} events
      * @param {Function} callback
+     * @param {Object} [context]
+     * @param {AbortController} [context.eventHandler]
      */
   }, {
     key: "addEvent",
-    value: function addEvent($ele, events, callback) {
+    value: function addEvent($ele, events, callback, context) {
       if (!$ele) {
         return;
       }
@@ -547,7 +549,10 @@ var DomUtils = /*#__PURE__*/function () {
       eventsArray.forEach(function (event) {
         var $eleArray = DomUtils.getElements($ele);
         $eleArray.forEach(function ($this) {
-          $this.addEventListener(event, callback);
+          var options = context !== null && context !== void 0 && context.eventHandler ? {
+            signal: context.eventHandler.signal
+          } : undefined;
+          $this.addEventListener(event, callback, options);
         });
       });
     }
@@ -686,7 +691,7 @@ var keyDownMethodMapping = {
 var valueLessProps = ['autofocus', 'disabled', 'multiple', 'required'];
 var nativeProps = ['autofocus', 'class', 'disabled', 'id', 'multiple', 'name', 'placeholder', 'required'];
 var attrPropsMapping;
-var dataProps = ['additionalClasses', 'additionalDropboxClasses', 'additionalDropboxContainerClasses', 'additionalToggleButtonClasses', 'aliasKey', 'allOptionsSelectedText', 'allowNewOption', 'alwaysShowSelectedOptionsCount', 'alwaysShowSelectedOptionsLabel', 'ariaLabelledby', 'ariaLabelText', 'ariaLabelClearButtonText', 'ariaLabelTagClearButtonText', 'ariaLabelSearchClearButtonText', 'autoSelectFirstOption', 'clearButtonText', 'descriptionKey', 'disableAllOptionsSelectedText', 'disableOptionGroupCheckbox', 'disableSelectAll', 'disableValidation', 'dropboxWidth', 'dropboxWrapper', 'emptyValue', 'enableSecureText', 'focusSelectedOptionOnOpen', 'hasOptionDescription', 'hideClearButton', 'hideValueTooltipOnSelectAll', 'keepAlwaysOpen', 'labelKey', 'markSearchResults', 'maxValues', 'maxWidth', 'minValues', 'moreText', 'noOfDisplayValues', 'noOptionsText', 'noSearchResultsText', 'optionHeight', 'optionSelectedText', 'optionsCount', 'optionsSelectedText', 'popupDropboxBreakpoint', 'popupPosition', 'position', 'search', 'searchByStartsWith', 'searchDelay', 'searchFormLabel', 'searchGroup', 'searchNormalize', 'searchPlaceholderText', 'selectAllOnlyVisible', 'selectAllText', 'setValueAsArray', 'showDropboxAsPopup', 'showOptionsOnlyOnSearch', 'showSelectedOptionsFirst', 'showValueAsTags', 'silentInitialValueSet', 'textDirection', 'tooltipAlignment', 'tooltipFontSize', 'tooltipMaxWidth', 'updatePositionThrottle', 'useGroupValue', 'valueKey', 'zIndex'];
+var dataProps = ['additionalClasses', 'additionalDropboxClasses', 'additionalDropboxContainerClasses', 'additionalToggleButtonClasses', 'aliasKey', 'allOptionsSelectedText', 'allowNewOption', 'alwaysShowSelectedOptionsCount', 'alwaysShowSelectedOptionsLabel', 'ariaLabelledby', 'ariaLabelText', 'ariaLabelClearButtonText', 'ariaLabelTagClearButtonText', 'ariaLabelSearchClearButtonText', 'autoDestroy', 'autoSelectFirstOption', 'clearButtonText', 'descriptionKey', 'disableAllOptionsSelectedText', 'disableOptionGroupCheckbox', 'disableSelectAll', 'disableValidation', 'dropboxWidth', 'dropboxWrapper', 'emptyValue', 'enableDeselectAll', 'enableSecureText', 'focusSelectedOptionOnOpen', 'getSearchIndex', 'hasOptionDescription', 'hideClearButton', 'hideValueTooltipOnSelectAll', 'instanceId', 'keepAlwaysOpen', 'labelKey', 'markSearchResults', 'maxValues', 'maxWidth', 'minValues', 'moreText', 'noOfDisplayValues', 'noOptionsText', 'noSearchResultsText', 'optionHeight', 'optionSelectedText', 'optionsCount', 'optionsSelectedText', 'popupDropboxBreakpoint', 'popupPosition', 'position', 'search', 'searchByStartsWith', 'searchDelay', 'searchFormLabel', 'searchGroup', 'searchIndex', 'searchIndexValue', 'searchNormalize', 'searchPlaceholderText', 'selectAllOnlyVisible', 'selectAllText', 'setValueAsArray', 'showDropboxAsPopup', 'showOptionsOnlyOnSearch', 'showSelectedOptionsFirst', 'showValueAsTags', 'silentInitialValueSet', 'textDirection', 'tooltipAlignment', 'tooltipFontSize', 'tooltipMaxWidth', 'updatePositionThrottle', 'useGroupValue', 'valueKey', 'zIndex'];
 
 /** Class representing VirtualSelect */
 var VirtualSelect = /*#__PURE__*/function () {
@@ -992,7 +997,9 @@ var VirtualSelect = /*#__PURE__*/function () {
           callback = _this2[method].bind(_this2);
           _this2.events[eventsKey] = callback;
         }
-        DomUtils.addEvent($ele, event, callback);
+        DomUtils.addEvent($ele, event, callback, {
+          eventHandler: _this2.eventHandler
+        });
       });
     }
 
@@ -1491,6 +1498,9 @@ var VirtualSelect = /*#__PURE__*/function () {
       this.hasSearch = convertToBoolean(options.search);
       this.searchByStartsWith = convertToBoolean(options.searchByStartsWith);
       this.searchGroup = convertToBoolean(options.searchGroup);
+      this.searchIndex = options.searchIndex;
+      this.searchIndexValue = options.searchIndexValue;
+      this.getSearchIndex = options.getSearchIndex;
       this.hideClearButton = convertToBoolean(options.hideClearButton);
       this.autoSelectFirstOption = convertToBoolean(options.autoSelectFirstOption);
       this.hasOptionDescription = convertToBoolean(options.hasOptionDescription);
@@ -1508,6 +1518,9 @@ var VirtualSelect = /*#__PURE__*/function () {
       this.alwaysShowSelectedOptionsLabel = convertToBoolean(options.alwaysShowSelectedOptionsLabel);
       this.disableAllOptionsSelectedText = convertToBoolean(options.disableAllOptionsSelectedText);
       this.showValueAsTags = convertToBoolean(options.showValueAsTags);
+      this.autoDestroy = convertToBoolean(options.autoDestroy);
+      this.instanceId = options.instanceId;
+      this.enableDeselectAll = convertToBoolean(options.enableDeselectAll);
       this.disableOptionGroupCheckbox = convertToBoolean(options.disableOptionGroupCheckbox);
       this.enableSecureText = convertToBoolean(options.enableSecureText);
       this.setValueAsArray = convertToBoolean(options.setValueAsArray);
@@ -1591,6 +1604,12 @@ var VirtualSelect = /*#__PURE__*/function () {
       this.uniqueId = this.getUniqueId();
       this.shouldFocusWrapperOnClose = true; // Initialize focus management property
       this.ariaSetSize = 0;
+      this.eventHandler = options.eventHandler || new AbortController();
+
+      // Expose API globally if instanceId is provided
+      if (this.instanceId) {
+        window["vselectApi_".concat(this.instanceId)] = this;
+      }
     }
 
     /**
@@ -1644,7 +1663,8 @@ var VirtualSelect = /*#__PURE__*/function () {
         searchDelay: 300,
         focusSelectedOptionOnOpen: true,
         showDuration: 300,
-        hideDuration: 200
+        hideDuration: 200,
+        eventHandler: new AbortController()
       };
       if (options.hasOptionDescription) {
         defaultOptions.optionsCount = 4;
@@ -2291,6 +2311,12 @@ var VirtualSelect = /*#__PURE__*/function () {
       if (this.hasOptionGroup) {
         visibleOptionGroupsMapping = this.getVisibleOptionGroupsMapping(searchValue);
       }
+
+      /** Use external search index if provided */
+      var searchIndexResults = null;
+      if (this.searchIndex && this.getSearchIndex) {
+        searchIndexResults = this.getSearchIndex().search(searchValue);
+      }
       this.options.forEach(function (d) {
         if (d.isCurrentNew) {
           return;
@@ -2310,7 +2336,8 @@ var VirtualSelect = /*#__PURE__*/function () {
             hasExactOption: hasExactOption,
             visibleOptionGroupsMapping: visibleOptionGroupsMapping,
             searchGroup: searchGroup,
-            searchByStartsWith: searchByStartsWith
+            searchByStartsWith: searchByStartsWith,
+            searchIndexResults: searchIndexResults
           });
         }
         if (result.isVisible) {
@@ -2868,7 +2895,7 @@ var VirtualSelect = /*#__PURE__*/function () {
   }, {
     key: "initDropboxPopover",
     value: function initDropboxPopover() {
-      var data = {
+      var data = _defineProperty(_defineProperty(_defineProperty(_defineProperty({
         ele: this.$ele,
         target: this.$dropboxContainer,
         position: this.position,
@@ -2880,12 +2907,8 @@ var VirtualSelect = /*#__PURE__*/function () {
         hideArrowIcon: true,
         disableManualAction: true,
         disableUpdatePosition: !this.hasDropboxWrapper,
-        updatePositionThrottle: this.updatePositionThrottle,
-        showDuration: this.showDuration,
-        hideDuration: this.hideDuration,
-        afterShow: this.afterShowPopper.bind(this),
-        afterHide: this.afterHidePopper.bind(this)
-      };
+        updatePositionThrottle: this.updatePositionThrottle
+      }, "showDuration", this.showDuration), "hideDuration", this.hideDuration), "afterShow", this.afterShowPopper.bind(this)), "afterHide", this.afterHidePopper.bind(this));
       this.dropboxPopover = new PopoverComponent(data);
     }
   }, {
@@ -3589,20 +3612,40 @@ var VirtualSelect = /*#__PURE__*/function () {
         hasExactOption = _ref7.hasExactOption,
         visibleOptionGroupsMapping = _ref7.visibleOptionGroupsMapping,
         searchGroup = _ref7.searchGroup,
-        searchByStartsWith = _ref7.searchByStartsWith;
+        searchByStartsWith = _ref7.searchByStartsWith,
+        searchIndexResults = _ref7.searchIndexResults;
       var value = data.value.toLowerCase();
       var label = this.searchNormalize && data.labelNormalized != null ? data.labelNormalized : (data.label || '').trim().toLowerCase();
       var description = data.description,
         alias = data.alias;
-      var isVisible = searchByStartsWith ? label.startsWith(searchValue) : label.includes(searchValue);
-      if (data.isGroupTitle && (!searchGroup || !isVisible)) {
-        isVisible = visibleOptionGroupsMapping[data.index];
-      }
-      if (!searchByStartsWith && alias && !isVisible) {
-        isVisible = alias.includes(searchValue);
-      }
-      if (!searchByStartsWith && description && !isVisible) {
-        isVisible = description.toLowerCase().includes(searchValue);
+      var isVisible;
+
+      /** Use external search index results if available */
+      if (searchIndexResults && searchIndexResults.length > 0) {
+        var possibleDirect = searchIndexResults.find(function (x) {
+          return (x.item.value || '').toString().toLowerCase() === value;
+        });
+        if (possibleDirect !== undefined) {
+          isVisible = true;
+        } else {
+          var possibleGroup = searchIndexResults.find(function (x) {
+            return x.item.options && x.item.options.find(function (y) {
+              return (y.value || '').toString().toLowerCase() === value;
+            }) !== undefined;
+          });
+          isVisible = possibleGroup !== undefined;
+        }
+      } else {
+        isVisible = searchByStartsWith ? label.startsWith(searchValue) : label.includes(searchValue);
+        if (data.isGroupTitle && (!searchGroup || !isVisible)) {
+          isVisible = visibleOptionGroupsMapping[data.index];
+        }
+        if (!searchByStartsWith && alias && !isVisible) {
+          isVisible = alias.includes(searchValue);
+        }
+        if (!searchByStartsWith && description && !isVisible) {
+          isVisible = description.toLowerCase().includes(searchValue);
+        }
       }
 
       // eslint-disable-next-line no-param-reassign
@@ -3711,6 +3754,11 @@ var VirtualSelect = /*#__PURE__*/function () {
     key: "destroy",
     value: function destroy() {
       var $ele = this.$ele;
+
+      // Abort all event listeners using AbortController
+      if (this.eventHandler) {
+        this.eventHandler.abort();
+      }
       $ele.virtualSelect = undefined;
       $ele.value = undefined;
       $ele.innerHTML = '';
@@ -3736,6 +3784,11 @@ var VirtualSelect = /*#__PURE__*/function () {
       }
       if (this.dropboxPopover) {
         this.dropboxPopover.destroy();
+      }
+
+      // Remove global API reference if instanceId was set
+      if (this.instanceId && window["vselectApi_".concat(this.instanceId)]) {
+        delete window["vselectApi_".concat(this.instanceId)];
       }
       DomUtils.removeClass($ele, 'vscomp-ele');
     }

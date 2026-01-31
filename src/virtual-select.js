@@ -33,6 +33,7 @@ const dataProps = [
   'ariaLabelClearButtonText',
   'ariaLabelTagClearButtonText',
   'ariaLabelSearchClearButtonText',
+  'autoDestroy',
   'autoSelectFirstOption',
   'clearButtonText',
   'descriptionKey',
@@ -43,11 +44,14 @@ const dataProps = [
   'dropboxWidth',
   'dropboxWrapper',
   'emptyValue',
+  'enableDeselectAll',
   'enableSecureText',
   'focusSelectedOptionOnOpen',
+  'getSearchIndex',
   'hasOptionDescription',
   'hideClearButton',
   'hideValueTooltipOnSelectAll',
+  'instanceId',
   'keepAlwaysOpen',
   'labelKey',
   'markSearchResults',
@@ -70,6 +74,8 @@ const dataProps = [
   'searchDelay',
   'searchFormLabel',
   'searchGroup',
+  'searchIndex',
+  'searchIndexValue',
   'searchNormalize',
   'searchPlaceholderText',
   'selectAllOnlyVisible',
@@ -500,7 +506,7 @@ export class VirtualSelect {
         this.events[eventsKey] = callback;
       }
 
-      DomUtils.addEvent($ele, event, callback);
+      DomUtils.addEvent($ele, event, callback, { eventHandler: this.eventHandler });
     });
   }
 
@@ -981,6 +987,9 @@ export class VirtualSelect {
     this.hasSearch = convertToBoolean(options.search);
     this.searchByStartsWith = convertToBoolean(options.searchByStartsWith);
     this.searchGroup = convertToBoolean(options.searchGroup);
+    this.searchIndex = options.searchIndex;
+    this.searchIndexValue = options.searchIndexValue;
+    this.getSearchIndex = options.getSearchIndex;
     this.hideClearButton = convertToBoolean(options.hideClearButton);
     this.autoSelectFirstOption = convertToBoolean(options.autoSelectFirstOption);
     this.hasOptionDescription = convertToBoolean(options.hasOptionDescription);
@@ -998,6 +1007,9 @@ export class VirtualSelect {
     this.alwaysShowSelectedOptionsLabel = convertToBoolean(options.alwaysShowSelectedOptionsLabel);
     this.disableAllOptionsSelectedText = convertToBoolean(options.disableAllOptionsSelectedText);
     this.showValueAsTags = convertToBoolean(options.showValueAsTags);
+    this.autoDestroy = convertToBoolean(options.autoDestroy);
+    this.instanceId = options.instanceId;
+    this.enableDeselectAll = convertToBoolean(options.enableDeselectAll);
     this.disableOptionGroupCheckbox = convertToBoolean(options.disableOptionGroupCheckbox);
     this.enableSecureText = convertToBoolean(options.enableSecureText);
     this.setValueAsArray = convertToBoolean(options.setValueAsArray);
@@ -1089,6 +1101,12 @@ export class VirtualSelect {
     this.uniqueId = this.getUniqueId();
     this.shouldFocusWrapperOnClose = true; // Initialize focus management property
     this.ariaSetSize = 0;
+    this.eventHandler = options.eventHandler || new AbortController();
+
+    // Expose API globally if instanceId is provided
+    if (this.instanceId) {
+      window[`vselectApi_${this.instanceId}`] = this;
+    }
   }
 
   /**
@@ -1141,6 +1159,7 @@ export class VirtualSelect {
       focusSelectedOptionOnOpen: true,
       showDuration: 300,
       hideDuration: 200,
+      eventHandler: new AbortController(),
     };
 
     if (options.hasOptionDescription) {
@@ -1853,6 +1872,12 @@ export class VirtualSelect {
       visibleOptionGroupsMapping = this.getVisibleOptionGroupsMapping(searchValue);
     }
 
+    /** Use external search index if provided */
+    let searchIndexResults = null;
+    if (this.searchIndex && this.getSearchIndex) {
+      searchIndexResults = this.getSearchIndex().search(searchValue);
+    }
+
     this.options.forEach((d) => {
       if (d.isCurrentNew) {
         return;
@@ -1874,6 +1899,7 @@ export class VirtualSelect {
           visibleOptionGroupsMapping,
           searchGroup,
           searchByStartsWith,
+          searchIndexResults,
         });
       }
 
@@ -3250,25 +3276,38 @@ export class VirtualSelect {
     return this.destructureOptionGroup(structuredOptions);
   }
 
-  isOptionVisible({ data, searchValue, hasExactOption, visibleOptionGroupsMapping, searchGroup, searchByStartsWith }) {
+  isOptionVisible({ data, searchValue, hasExactOption, visibleOptionGroupsMapping, searchGroup, searchByStartsWith, searchIndexResults }) {
     const value = data.value.toLowerCase();
     const label = (this.searchNormalize && data.labelNormalized != null)
       ? data.labelNormalized
       : (data.label || '').trim().toLowerCase();
     const { description, alias } = data;
 
-    let isVisible = searchByStartsWith ? label.startsWith(searchValue) : label.includes(searchValue);
+    let isVisible;
 
-    if (data.isGroupTitle && (!searchGroup || !isVisible)) {
-      isVisible = visibleOptionGroupsMapping[data.index];
-    }
+    /** Use external search index results if available */
+    if (searchIndexResults && searchIndexResults.length > 0) {
+      const possibleDirect = searchIndexResults.find((x) => (x.item.value || '').toString().toLowerCase() === value);
+      if (possibleDirect !== undefined) {
+        isVisible = true;
+      } else {
+        const possibleGroup = searchIndexResults.find((x) => x.item.options && x.item.options.find((y) => (y.value || '').toString().toLowerCase() === value) !== undefined);
+        isVisible = possibleGroup !== undefined;
+      }
+    } else {
+      isVisible = searchByStartsWith ? label.startsWith(searchValue) : label.includes(searchValue);
 
-    if (!searchByStartsWith && alias && !isVisible) {
-      isVisible = alias.includes(searchValue);
-    }
+      if (data.isGroupTitle && (!searchGroup || !isVisible)) {
+        isVisible = visibleOptionGroupsMapping[data.index];
+      }
 
-    if (!searchByStartsWith && description && !isVisible) {
-      isVisible = description.toLowerCase().includes(searchValue);
+      if (!searchByStartsWith && alias && !isVisible) {
+        isVisible = alias.includes(searchValue);
+      }
+
+      if (!searchByStartsWith && description && !isVisible) {
+        isVisible = description.toLowerCase().includes(searchValue);
+      }
     }
 
     // eslint-disable-next-line no-param-reassign
@@ -3385,6 +3424,12 @@ export class VirtualSelect {
 
   destroy() {
     const { $ele } = this;
+
+    // Abort all event listeners using AbortController
+    if (this.eventHandler) {
+      this.eventHandler.abort();
+    }
+
     $ele.virtualSelect = undefined;
     $ele.value = undefined;
     $ele.innerHTML = '';
@@ -3412,6 +3457,11 @@ export class VirtualSelect {
 
     if (this.dropboxPopover) {
       this.dropboxPopover.destroy();
+    }
+
+    // Remove global API reference if instanceId was set
+    if (this.instanceId && window[`vselectApi_${this.instanceId}`]) {
+      delete window[`vselectApi_${this.instanceId}`];
     }
 
     DomUtils.removeClass($ele, 'vscomp-ele');
