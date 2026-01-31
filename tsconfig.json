@@ -9,8 +9,9 @@
     "checkJs": true,
     "strict": true,
     "declaration": true,
-    "types": ["cypress"],
-    "emitDeclarationOnly": true
+    "types": ["cypress", "node", "cypress-real-events"],
+    "emitDeclarationOnly": true,
+    "skipLibCheck": true
   },
 
   "include": ["src/**/*", "cypress/**/*"]

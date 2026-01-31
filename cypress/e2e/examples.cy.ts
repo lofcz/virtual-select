@@ -1,6 +1,375 @@
 /** cSpell:ignore vscomp */
 
-describe('Open examples page', () => {
+// // // // //
+// // // // // Get started page
+// // // // //
+
+describe('Open Get started page', () => {
+  it('opened', () => {
+    cy.visit('get-started');
+  });
+});
+
+describe('Open Get Started page for Dropdowns interaction test', () => {
+  const idSingle = 'single-select'
+  const idMultiple = 'multiple-select'
+
+  it('open the single-select dropdown', () => {
+    cy.open(idSingle);
+    cy.getVs(idSingle).find('.vscomp-ele-wrapper').should('not.have.class', 'closed');
+  });
+
+  it('open the multiple-select dropdown clicking directly in the DOM element', () => {
+    cy.getVs(idMultiple).find('.vscomp-toggle-button').click();
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('not.have.class', 'closed');
+  });
+
+  it('should close single-select when opening single-select and multiple-select keep opened', () => {
+    cy.getVs(idSingle).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('not.have.class', 'closed');
+  });
+});
+
+describe('Open Get Started page for Dropdowns interaction test clicking outside', () => {
+  const idSingle = 'single-select'
+  const idMultiple = 'multiple-select'
+
+  it('open the single-select dropdown', () => {
+    cy.open(idSingle);
+    cy.getVs(idSingle).find('.vscomp-ele-wrapper').should('not.have.class', 'closed');
+  });
+
+  it('click outside to close the single-select dropdown', () => {
+    cy.get('body').click(10, 10); // Click at coordinates 10,10
+    cy.getVs(idSingle).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+  });
+
+  it('open the multiple-select dropdown', () => {
+    cy.open(idMultiple);
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('not.have.class', 'closed');
+  });
+
+  it('click outside to close the multiple-select dropdown', () => {
+    cy.get('body').click(10, 10); // Click at coordinates 10,10
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+  });
+
+});
+
+
+
+describe('Accessibility attributes - virtualized options metadata', () => {
+  const id = 'single-select';
+
+  it('exposes total list size and sequential positions without search', () => {
+    cy.open(id);
+
+    cy.getDropbox(null, id)
+      .find('[role="option"][aria-setsize]')
+      .first()
+      .as('firstOption');
+
+    cy.get('@firstOption')
+      .invoke('attr', 'aria-setsize')
+      .then((value) => {
+        const setSize = Number(value);
+        expect(Number.isNaN(setSize), 'aria-setsize should be a number').to.be.false;
+        expect(setSize, 'aria-setsize should be greater than zero').to.be.greaterThan(0);
+        cy.wrap(setSize).as('totalOptionsCount');
+      });
+
+    cy.get('@firstOption')
+      .invoke('attr', 'aria-posinset')
+      .then((value) => {
+        const position = Number(value);
+        expect(position, 'first visible option should be position 1').to.equal(1);
+      });
+
+    cy.getDropbox(null, id)
+      .find('[role="option"][aria-posinset]')
+      .last()
+      .invoke('attr', 'aria-posinset')
+      .then((value) => {
+        const lastPosition = Number(value);
+        expect(Number.isNaN(lastPosition), 'last option should report aria-posinset').to.be.false;
+        cy.wrap(lastPosition).as('initialLastPosition');
+      });
+
+    cy.getVs(id).scrollOptions(2000);
+    cy.wait(300);
+
+    cy.get('@initialLastPosition').then((initialLastPosition) => {
+      const initialPosition = Number(initialLastPosition);
+      cy.getDropbox(null, id)
+        .find('[role="option"][aria-posinset]')
+        .last()
+        .invoke('attr', 'aria-posinset')
+        .then((value) => {
+          const newLast = Number(value);
+          expect(newLast, 'last rendered option should advance after scrolling').to.be.greaterThan(initialPosition);
+        });
+    });
+
+    cy.get('body').click(10, 10);
+  });
+
+  it('updates aria-setsize and positions when filtering via search', () => {
+    cy.open(id).search('Option 1234');
+
+    cy.getDropbox(null, id)
+      .find('[role="option"][aria-setsize]')
+      .should('have.length.greaterThan', 0)
+      .first()
+      .as('filteredFirstOption');
+
+    cy.get('@filteredFirstOption')
+      .invoke('attr', 'aria-setsize')
+      .then((value) => {
+        const setSize = Number(value);
+        expect(Number.isNaN(setSize), 'filtered aria-setsize should be numeric').to.be.false;
+        expect(setSize, 'filtered aria-setsize should be greater than zero').to.be.greaterThan(0);
+      });
+
+    cy.get('@filteredFirstOption')
+      .invoke('attr', 'aria-posinset')
+      .then((value) => {
+        const position = Number(value);
+        expect(position, 'first filtered option should be position 1').to.equal(1);
+      });
+
+    cy.getDropbox(null, id)
+      .find('[role="option"][aria-posinset]')
+      .eq(1)
+      .invoke('attr', 'aria-posinset')
+      .then((value) => {
+        if (value) {
+          const position = Number(value);
+          expect(position, 'second filtered option should be position 2').to.equal(2);
+        }
+      });
+
+    cy.get('body').click(10, 10);
+    cy.reload();
+  });
+
+  it('has proper ARIA attributes on listbox and options container for screen reader navigation', () => {
+    cy.open(id);
+
+    // Cache references to relevant elements for repeated assertions
+    cy.getDropbox(null, id)
+      .find('.vscomp-options-container')
+      .should('exist')
+      .as('listboxContainer');
+
+    cy.getDropbox(null, id)
+      .parent('.vscomp-dropbox-container')
+      .should('exist')
+      .as('listboxRegion');
+
+    // Get the combobox wrapper ID for reference
+    cy.getVs(id)
+      .find('.vscomp-ele-wrapper')
+      .invoke('attr', 'id')
+      .as('comboboxId');
+
+    // Verify listbox container has correct role and aria-labelledby
+    cy.get('@comboboxId').then((comboboxId) => {
+      cy.get('@listboxContainer')
+        .should('have.attr', 'role', 'listbox')
+        .should('have.attr', 'aria-labelledby', comboboxId);
+    });
+
+    // Navigate to first option using keyboard (Down arrow from combobox)
+    cy.getVs(id).find('.vscomp-ele-wrapper').type('{downarrow}');
+    cy.wait(100); // Wait for focus to update
+
+    // Get first option and verify it's focused
+    cy.getDropbox(null, id)
+      .find('[role="option"]')
+      .first()
+      .as('firstOption')
+      .should('have.class', 'focused');
+
+    // Get the ID of the first option
+    cy.get('@firstOption')
+      .invoke('attr', 'id')
+      .as('firstOptionId');
+
+    // Verify aria-activedescendant is set on listbox container when option is focused
+    cy.get('@firstOptionId').then((firstOptionId) => {
+      cy.get('@listboxRegion')
+        .should('have.attr', 'aria-activedescendant', firstOptionId);
+    });
+
+    // Navigate to second option using arrow key
+    cy.get('@firstOption').type('{downarrow}');
+    cy.wait(100); // Wait for focus to update
+
+    // Get second option
+    cy.getDropbox(null, id)
+      .find('[role="option"]')
+      .eq(1)
+      .as('secondOption')
+      .should('have.class', 'focused');
+
+    // Get the ID of the second option
+    cy.get('@secondOption')
+      .invoke('attr', 'id')
+      .as('secondOptionId');
+
+    // Verify aria-activedescendant updates to second option
+    cy.get('@secondOptionId').then((secondOptionId) => {
+      cy.get('@listboxRegion')
+        .should('have.attr', 'aria-activedescendant', secondOptionId);
+    });
+
+    cy.get('body').click(10, 10);
+  });
+});
+
+
+
+/**
+ * Arrow key behavior tests for search input
+ * Tests the fix that allows normal cursor movement in search input
+ * while preserving option navigation when focus moves away from search
+ */
+
+describe('Arrow key behavior in search input - cursor movement', () => {
+  const idMultiple = 'multiple-select'
+
+  it('should allow cursor movement to beginning with up arrow in search input', () => {
+    cy.open(idMultiple);
+    // Type some text in search input
+    cy.getVs(idMultiple).typeValue('ption 9', true);
+    // Press Up arrow - should move cursor to beginning
+    cy.getVs(idMultiple).pressKeys('ArrowUp');
+    // Type 'O' at cursor position (should be at beginning)
+    cy.getVs(idMultiple).typeValue('O');
+    // Verify the text has 'O' at the beginning
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 9');
+  });
+
+  it('should allow cursor movement to end with down arrow in search input', () => {
+    // Clear and test Down arrow - use actual dropdown data
+    cy.getVs(idMultiple).typeValue('Option 1', true);
+    // Press Down arrow - should move cursor to end
+    cy.getVs(idMultiple).pressKeys('ArrowDown');
+    // Type '0' at cursor position (should be at end, making "Option 10")
+    cy.getVs(idMultiple).typeValue('0');
+    // Verify the text has '0' at the end
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 10');
+  });
+
+  it('should allow left and right arrow keys for cursor movement in search', () => {
+    // Clear and type new text using actual dropdown data
+    cy.getVs(idMultiple).typeValue('Option 55', true);
+    // Move cursor left twice (to position before '5')
+    cy.getVs(idMultiple).pressKeys(['ArrowLeft', 'ArrowLeft']);
+    // Type 'X' in middle (before the '5')
+    cy.getVs(idMultiple).typeValue('4');
+    // Should have 'Option 455'
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 455');
+    // Move cursor right twice (to end)
+    cy.getVs(idMultiple).pressKeys(['ArrowRight', 'ArrowRight']);
+    // Type 'Y' at end
+    cy.getVs(idMultiple).typeValue('6');
+    // Should have 'Option 4556'
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 4556');
+  });
+
+  it('should close multiple-select dropdown', () => {
+    cy.get('body').click(10, 10); // Click outside to close
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+  });
+});
+
+describe('Arrow key behavior - no option navigation when search input focused', () => {
+  const idMultiple = 'multiple-select'
+  const searchInputSelector = '.vscomp-search-input';
+
+  it('should not navigate options when arrow keys used in search input', () => {
+    cy.open(idMultiple);
+    // Type in search input - use text that will filter to a few options
+    cy.getVs(idMultiple).typeValue('Option 1', true);
+    // Wait for filtering to complete
+    cy.wait(100);
+    // Verify search input is focused
+    cy.checkActiveElementHasClass('vscomp-search-input');
+    // Press Down arrow while focused on search input
+    cy.getVs(idMultiple).pressKeys('ArrowDown');
+    // Search input should still be focused (arrow key should move cursor, not navigate options)
+    cy.checkActiveElementHasClass('vscomp-search-input');
+    // Press Up arrow while focused on search input
+    cy.getVs(idMultiple).pressKeys('ArrowUp');
+    // Search input should still be focused
+    cy.checkActiveElementHasClass('vscomp-search-input');
+  });
+
+  it('should close multiple-select dropdown', () => {
+    cy.get('body').click(10, 10); // Click outside to close
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+  });
+});
+
+describe('Arrow key behavior - Home and End keys in search input', () => {
+  const idMultiple = 'multiple-select'
+
+  it('should work correctly with Home and End keys in search input', () => {
+    cy.open(idMultiple);
+    // Type some text using search to ensure dropdown is properly opened
+    cy.getVs(idMultiple).typeValue('ption 55', true);
+    // Press Home to go to beginning
+    cy.getVs(idMultiple).pressKeys('Home');
+    // Type at beginning
+    cy.getVs(idMultiple).typeValue('O');
+    // Should have 'Option 55'
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 55');
+    // Press End to go to end
+    cy.getVs(idMultiple).pressKeys('End');
+    // Type at end
+    cy.getVs(idMultiple).typeValue('6');
+    // Should have 'Option 556'
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 556');
+    cy.getVs(idMultiple).searchClear();
+  });
+
+  it('should close multiple-select dropdown', () => {
+    cy.get('body').click(10, 10); // Click outside to close
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+  });
+});
+
+describe('Arrow key behavior - focus management and accessibility', () => {
+  const idMultiple = 'multiple-select'
+
+  it('should allow normal text editing with arrow keys in search', () => {
+    cy.open(idMultiple);
+    // Clear and test more text editing using realistic data
+    cy.getVs(idMultiple).typeValue('tion 123', true);
+    // Use Up arrow to go to beginning
+    cy.getVs(idMultiple).pressKeys('ArrowUp');
+    cy.getVs(idMultiple).typeValue('Op');
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 123');
+    // Use Down arrow to go to end
+    cy.getVs(idMultiple).pressKeys('ArrowDown');
+    cy.getVs(idMultiple).typeValue('44');
+    cy.getVs(idMultiple).checkOptionLabelExists('Option 12344');
+  });
+
+  it('should close multiple-select dropdown', () => {
+    cy.get('body').click(10, 10); // Click outside to close
+    cy.getVs(idMultiple).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+  });
+});
+
+
+
+// // // // //
+// // // // // Examples page
+// // // // //
+
+describe('Open Examples page', () => {
   it('opened', () => {
     cy.visit('examples');
   });
@@ -90,7 +459,12 @@ describe('Multiple select', () => {
   });
 
   it('search and select available option', () => {
-    cy.open(id).search('Option 234').selectOption([2340, 2342]).hasValueText('Option 2340, Option 2342');
+    cy.open(id)
+      .search('Option 2340')
+      .selectOption(2340)
+      .search('Option 2342')
+      .selectOption(2342)
+      .hasValueText('Option 2340, Option 2342');
   });
 
   it('search, scroll, and select option', () => {
@@ -152,7 +526,10 @@ describe('Option group', () => {
 
   it('select all group options', () => {
     cy.getVs(id)
-      .selectOption(['1-2', '1-3'])
+      .search('1-2')
+      .selectOption('1-2')
+      .search('1-3')
+      .selectOption('1-3')
       .hasValueText('3 options selected')
       .checkOptionGroup('Option group 1', true);
   });
@@ -167,6 +544,7 @@ describe('Option group', () => {
 
   it('select all options', () => {
     cy.getVs(id)
+      .searchClear()
       .toggleSelectAll()
       .hasValueText('All (9)')
       .checkOptionGroup('Option group 1', true)
@@ -383,7 +761,15 @@ describe('Show dropbox as popup - Multiple', () => {
   });
 
   it('select options', () => {
-    cy.open(id).selectOption([1, 3, 7]).hasValueText('Option 1, Option 3, Option 7');
+    cy.open(id)
+    .search('1')
+    .selectOption(1)
+    .search('3')
+    .selectOption(3)
+    .search('7')
+    .selectOption(7)
+    .hasValueText('Option 1, Option 3, Option 7')
+    .searchClear();
   });
 
   it('dropbox is fixed', () => {
@@ -472,9 +858,15 @@ describe('Show values as tags', () => {
 
   it('select options', () => {
     cy.open(id)
-      .selectOption([3, 7])
+      .search('3')
+      .selectOption(3)
+      .search('7')
+      .selectOption(7)
       .scrollOptions(600)
-      .selectOption([18, 20])
+      .search('18')
+      .selectOption(18)
+      .search('20')
+      .selectOption(20)
       .hasValueTags(['Option 3', 'Option 7', 'Option 18', 'Option 20'])
   });
 
@@ -494,7 +886,15 @@ describe('Show values as tags', () => {
   });
 
   it('reset value', () => {
-    cy.open(id).selectOption([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).checkValueTagsCount(10).resetValue(id);
+    const optsList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    const vs = cy.open(id);
+    for (let i = 0; i < optsList.length; i++) {
+      vs
+        .search(`Option ${optsList[i]}`)
+        .selectOption(i+1);
+    }
+    vs.checkValueTagsCount(10).resetValue(id)
   });
 });
 
@@ -510,7 +910,12 @@ describe('Right-to-Left text', () => {
   });
 
   it('select available option', () => {
-    cy.open(id).selectOption([1, 3]).hasValueText('Option 1, Option 3');
+    cy.open(id)
+      .search(`1`)
+      .selectOption(1)
+      .search(`3`)
+      .selectOption(3)
+      .hasValueText('Option 1, Option 3');
   });
 
   it('value aligned to right', () => {
@@ -571,4 +976,110 @@ describe('Validation', () => {
     cy.get('#validation-form').find('[type=reset]').click();
     cy.getVs(id).find('.vscomp-ele-wrapper').should('not.have.class', 'has-error');
   });
+});
+
+// // // // //
+// // // // // Events page
+// // // // //
+
+describe('To verify that the change event is not fired twice when selecting items after a search', () => {
+
+  const id = 'sample-select-onchange';
+  const resId = 'sample-select-changes';
+
+  it('go to section', () => {
+    cy.goToSection('Events');
+  });
+
+  it('select Option 1', () => {
+    cy.open(id).selectOption(1).hasValueText('Option 1');
+    cy.get(`#${resId}`).should('have.text', 'Selected = 1 | No.changes = 1');
+  });
+
+  it('search and select 123', () => {
+    cy.open(id).search('123').selectOption(123).hasValueText('Option 123');
+    cy.get(`#${resId}`).should('have.text', 'Selected = 123 | No.changes = 2');
+  });
+
+});
+
+
+describe('To verify that the reset event is fired', () => {
+
+  const id = 'sample-select-reset';
+  const resId = 'select-reset-res';
+
+  it('go to section', () => {
+    cy.goToSection('Events');
+  });
+
+  it('select Option 1', () => {
+    cy.open(id).selectOption(1).hasValueText('Option 1');
+  });
+
+  it('check clear button exist', () => {
+    cy.getVs(id).checkClearButton(true);
+  });
+
+  it('reset value', () => {
+    cy.resetValue(id);
+    cy.get(`#${resId}`).should('have.text', 'reset event triggered');
+  });
+
+});
+
+
+/**
+ * Focus management regression tests
+ *
+ * 1. When the dropdown is open and the user clicks another focusable element
+ *    (e.g., an input), the focus must stay on that element – the dropdown
+ *    should not steal it back.
+ * 2. When the dropdown is closed with the Escape key, focus should return to
+ *    the dropdown wrapper to maintain keyboard accessibility.
+ */
+
+describe('Validate focus management clicking outside and pressing ESC', () => {
+
+  const id = 'sample-select-onchange';
+
+  it('go to section', () => {
+    cy.goToSection('Events');
+  });
+
+  it('keeps focus on external input when clicking outside', () => {
+    cy.open(id);
+    // Inject an external input into the DOM for testing
+    cy.document().then((doc) => {
+      const input = doc.createElement('input');
+      input.type = 'text';
+      input.id = 'external-input';
+      input.placeholder = 'External input';
+      input.setAttribute(
+        'style',
+        'position:fixed; top:20px; left:20px; z-index:9999;'
+      );
+      doc.body.appendChild(input);
+    });
+    // Click the external input and verify focus stays there
+    cy.get('#external-input').click({ force: true }).should('have.focus');
+    // Verify the dropdown is closed (wrapper has class "closed")
+    cy.getVs(id).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+    // Clean up the injected input to avoid side effects
+    cy.get('#external-input').then($input => {
+      $input.remove();
+    });
+  });
+
+  it('refocuses dropdown wrapper when closed with ESC', () => {
+    // 1. Open the dropdown
+    cy.open(id);
+    // 2. Press ESC to close it
+    cy.getVs(id).find('.vscomp-toggle-button').type('{esc}');
+    // 3. Wrapper should now have focus
+    cy.getVs(id).find('.vscomp-ele-wrapper').should('have.focus');
+    // 4. Ensure it is closed
+    cy.getVs(id).find('.vscomp-ele-wrapper').should('have.class', 'closed');
+  });
+
 });

@@ -74,8 +74,13 @@ function getOptions(count = 100000, includeDesc = false) {
 
     optionsData.push(optionData);
   }
-  //Add an option with a very long text
-  const optionData6 = { value: 100001, label: 'This is a very long text to be selected in the selection!! This is a very long text to be selected in the selection!!' };
+  // Add an option with a very long text
+  const optionData6 = {
+    value: 100001,
+    label:
+      'This is a very long text to be selected in the selection!! ' +
+      'This is a very long text to be selected in the selection!!',
+  };
   optionsData.push(optionData6);
 
   return optionsData;
@@ -293,30 +298,30 @@ function initPageExamples() {
   initVirtualSelect({
     ele: '#show-value-as-tags-select-with-html',
     multiple: true,
-  search: true,
-  showValueAsTags: true,
-  options: [
-    {
-      label: '<i class="icon-fire" aria-hidden="true"></i> Option 1',
-      value: 1
-    },
-    { label: '<i class="icon-plane" aria-hidden="true"></i> Option 2', 
-      value: 2 },
-    {
-      label:
-        '<i class="icon-apple" aria-hidden="true"></i> This is a very long text to be selected in the selection!! This is a very long text to be selected in the selection!!',
-      value: 3
-    },
-    {
-      label:
-        'This is a very long text to be selected in the selection!! This is a very long text to be selected in the selection!!',
-      value: 4
-    }
-    
-  ],  
-  selectedValue: [1,2]
+    search: true,
+    showValueAsTags: true,
+    options: [
+      {
+        label: '<i class="icon-fire" aria-hidden="true"></i> Option 1',
+        value: 1,
+      },
+      { label: '<i class="icon-plane" aria-hidden="true"></i> Option 2',
+        value: 2 },
+      {
+        label:
+          '<i class="icon-apple" aria-hidden="true"></i> This is a very long text to be selected in the selection!! ' +
+          'This is a very long text to be selected in the selection!!',
+        value: 3,
+      },
+      {
+        label:
+          'This is a very long text to be selected in the selection!! ' +
+          'This is a very long text to be selected in the selection!!',
+        value: 4,
+      },
+    ],
+    selectedValue: [1, 2],
   });
-
 
   initVirtualSelect({
     ele: '#direction-rtl-select',
@@ -361,4 +366,40 @@ function initPageExamples() {
     additionalDropboxContainerClasses: 'custom-dropbox-container',
     additionalToggleButtonClasses: 'custom-toggle-button',
   });
+}
+
+// eslint-disable-next-line no-unused-vars
+function initPageEvents() {
+  initVirtualSelect({
+    ele: '#sample-select-onchange',
+    search: true,
+    dropboxWrapper: 'self', // needed for onchange unit tests
+  });
+  window.onchangeCount = 0;
+  document.querySelector('#sample-select-onchange').addEventListener('change', function handleOnChangeEvent() {
+    window.onchangeCount += 1;
+    document.querySelector('#sample-select-changes').textContent =
+      `Selected = ${this.value} | No.changes = ${window.onchangeCount}`;
+  });
+
+  initVirtualSelect({
+    ele: '#sample-select-openclose',
+  });
+  function handleOpenCloseEvent(event) {
+    // You can add custom logic here if needed
+    document.querySelector('#select-openclose-res').textContent = `${event.type} event triggered`;
+  }
+  document.querySelector('#sample-select-openclose').addEventListener('beforeOpen', handleOpenCloseEvent);
+  document.querySelector('#sample-select-openclose').addEventListener('afterOpen', handleOpenCloseEvent);
+  document.querySelector('#sample-select-openclose').addEventListener('beforeClose', handleOpenCloseEvent);
+  document.querySelector('#sample-select-openclose').addEventListener('afterClose', handleOpenCloseEvent);
+
+  initVirtualSelect({
+    ele: '#sample-select-reset',
+  });
+  function handleResetEvent(event) {
+    // You can add custom logic here if needed
+    document.querySelector('#select-reset-res').textContent = `${event.type} event triggered`;
+  }
+  document.querySelector('#sample-select-reset').addEventListener('reset', handleResetEvent);
 }

@@ -1,0 +1,6 @@
+@use './mixins' as m;
+@keyframes vscomp-animation-spin {
+  to {
+    @include m.prefix(transform, rotateZ(360deg));
+  }
+}
