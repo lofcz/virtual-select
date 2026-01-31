@@ -39,7 +39,6 @@
     "eslint-plugin-sonarjs": "^3.0.4",
     "filemanager-webpack-plugin": "^9.0.1",
     "mini-css-extract-plugin": "^2.9.4",
-    "popover-plugin": "^1.0.13",
     "postcss-loader": "^8.1.1",
     "sass": "^1.90.0",
     "sass-loader": "^16.0.5",

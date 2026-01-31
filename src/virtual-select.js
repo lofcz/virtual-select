@@ -2,6 +2,7 @@
 /* eslint-disable class-methods-use-this */
 // @ts-nocheck
 import { Utils, DomUtils } from './utils';
+import { PopoverComponent } from './popover/popover';
 
 const dropboxCloseButtonFullHeight = 48;
 const searchHeight = 40;
@@ -23,11 +24,13 @@ const dataProps = [
   'additionalDropboxClasses',
   'additionalDropboxContainerClasses',
   'additionalToggleButtonClasses',
+  'afterFirstRender',
   'aliasKey',
   'allOptionsSelectedText',
   'allowNewOption',
   'alwaysShowSelectedOptionsCount',
   'alwaysShowSelectedOptionsLabel',
+  'announce',
   'ariaLabelledby',
   'ariaLabelText',
   'ariaLabelClearButtonText',
@@ -148,7 +151,7 @@ export class VirtualSelect {
       }
     }
 
-    if (!this.hideClearButton) {
+    if (this.enableClearButton) {
       wrapperClasses += ' has-clear-button';
     }
 
@@ -190,7 +193,7 @@ export class VirtualSelect {
             ${this.placeholder}
           </div>
           <div class="vscomp-arrow"></div>
-          <div class="vscomp-clear-button toggle-button-child" ${clearButtonTooltip} 
+          <div class="vscomp-clear-button ${this.enableClearButton ? '' : 'neverRender'} toggle-button-child" ${clearButtonTooltip}
           tabindex="-1" role="button" ${ariaLabelClearBtnTxt}>
             <i class="vscomp-clear-icon"></i>
           </div>
@@ -869,6 +872,13 @@ export class VirtualSelect {
     if (this.autofocus) {
       this.focus();
     }
+
+    // Call afterFirstRender callback if provided
+    if (typeof this.afterFirstRender === 'function') {
+      setTimeout(() => {
+        this.afterFirstRender();
+      }, 0);
+    }
   }
 
   afterRenderOptions() {
@@ -991,6 +1001,8 @@ export class VirtualSelect {
     this.searchIndexValue = options.searchIndexValue;
     this.getSearchIndex = options.getSearchIndex;
     this.hideClearButton = convertToBoolean(options.hideClearButton);
+    // Support both enableClear and enableClearButton for backwards compatibility
+    this.enableClearButton = convertToBoolean(options.enableClearButton, options.enableClear);
     this.autoSelectFirstOption = convertToBoolean(options.autoSelectFirstOption);
     this.hasOptionDescription = convertToBoolean(options.hasOptionDescription);
     this.silentInitialValueSet = convertToBoolean(options.silentInitialValueSet);
@@ -1010,6 +1022,8 @@ export class VirtualSelect {
     this.autoDestroy = convertToBoolean(options.autoDestroy);
     this.instanceId = options.instanceId;
     this.enableDeselectAll = convertToBoolean(options.enableDeselectAll);
+    this.announce = options.announce;
+    this.afterFirstRender = options.afterFirstRender;
     this.disableOptionGroupCheckbox = convertToBoolean(options.disableOptionGroupCheckbox);
     this.enableSecureText = convertToBoolean(options.enableSecureText);
     this.setValueAsArray = convertToBoolean(options.setValueAsArray);
@@ -1038,6 +1052,7 @@ export class VirtualSelect {
     this.tooltipAlignment = options.tooltipAlignment;
     this.tooltipMaxWidth = options.tooltipMaxWidth;
     this.updatePositionThrottle = options.updatePositionThrottle;
+    this.borderRadiusOffset = parseFloat(options.borderRadiusOffset);
     this.noOfDisplayValues = parseInt(options.noOfDisplayValues);
     this.zIndex = parseInt(options.zIndex);
     this.maxValues = parseInt(options.maxValues);
@@ -1095,6 +1110,8 @@ export class VirtualSelect {
     this.showAsPopup =
       this.showDropboxAsPopup && !this.keepAlwaysOpen && window.innerWidth <= parseFloat(this.popupDropboxBreakpoint);
     this.hasSearchContainer = this.hasSearch || (this.multiple && !this.disableSelectAll);
+    // Store the initial/requested options count for recalculation on resize
+    this.initialOptionsCount = options.optionsCount;
     this.optionsCount = this.getOptionsCount(options.optionsCount);
     this.halfOptionsCount = Math.ceil(this.optionsCount / 2);
     this.optionsHeight = this.getOptionsHeight();
@@ -1129,7 +1146,7 @@ export class VirtualSelect {
       noOptionsText: 'No options found',
       noSearchResultsText: 'No results found',
       selectAllText: 'Select All',
-      searchNormalize: false,
+      searchNormalize: true, // Enable diacritic-insensitive search by default
       searchPlaceholderText: 'Search...',
       searchFormLabel: 'Search',
       clearButtonText: 'Clear',
@@ -1144,6 +1161,7 @@ export class VirtualSelect {
       tooltipAlignment: 'center',
       tooltipMaxWidth: '300px',
       updatePositionThrottle: 100,
+      borderRadiusOffset: 4,
       name: '',
       additionalClasses: '',
       additionalDropboxClasses: '',
@@ -1467,9 +1485,7 @@ export class VirtualSelect {
         index,
         value,
         label,
-        labelNormalized: this.searchNormalize && label.trim() !== ''
-          ? Utils.normalizeString(label).toLowerCase()
-          : label.toLowerCase(),
+        // labelNormalized is computed lazily on first search for efficiency
         alias: getAlias(d[aliasKey]),
         isVisible: convertToBoolean(d.isVisible, true),
         isNew: d.isNew || false,
@@ -1990,6 +2006,14 @@ export class VirtualSelect {
     }
 
     this.options[index][key] = value;
+
+    // Invalidate cached normalized values when relevant properties change
+    // so they get recomputed on next search
+    if (key === 'label') {
+      delete this.options[index].labelNormalized;
+    } else if (key === 'alias') {
+      delete this.options[index].aliasNormalized;
+    }
   }
 
   setOptionsHeight() {
@@ -2000,12 +2024,11 @@ export class VirtualSelect {
     let optionsHeight;
 
     if (reset) {
-      if (this.showAsPopup) {
-        this.optionsCount = this.getOptionsCount();
-        this.halfOptionsCount = Math.ceil(this.optionsCount / 2);
-        optionsHeight = this.getOptionsHeight();
-        this.optionsHeight = optionsHeight;
-      }
+      // Recalculate options count based on current viewport for both popup and dropdown modes
+      this.optionsCount = this.getOptionsCount(this.initialOptionsCount);
+      this.halfOptionsCount = Math.ceil(this.optionsCount / 2);
+      optionsHeight = this.getOptionsHeight();
+      this.optionsHeight = optionsHeight;
     } else {
       optionsHeight = this.optionsHeight;
 
@@ -2443,6 +2466,7 @@ export class VirtualSelect {
 
   getOptionsCount(count) {
     let result;
+    const requestedCount = parseInt(count) || 5;
 
     if (this.showAsPopup) {
       let availableHeight = (window.innerHeight * 80) / 100 - dropboxCloseButtonFullHeight;
@@ -2453,7 +2477,22 @@ export class VirtualSelect {
 
       result = Math.floor(availableHeight / this.optionHeight);
     } else {
-      result = parseInt(count);
+      // For regular dropdown mode, also consider viewport constraints
+      // Treat requestedCount as a maximum/hint, not a strict requirement
+      const viewportHeight = window.innerHeight;
+      const margin = this.offset || 5; // Space from viewport edge
+      const searchContainerHeight = this.hasSearchContainer ? searchHeight : 0;
+      
+      // Calculate max available space (leaving some margin from viewport edges)
+      // Use 90% of viewport as maximum to ensure some breathing room
+      const maxAvailableHeight = (viewportHeight * 0.9) - searchContainerHeight - (margin * 2);
+      const maxOptionsFromViewport = Math.floor(maxAvailableHeight / this.optionHeight);
+      
+      // Use the smaller of requested count or what viewport allows
+      result = Math.min(requestedCount, maxOptionsFromViewport);
+      
+      // Ensure at least 3 options are shown
+      result = Math.max(result, 3);
     }
 
     return result;
@@ -2490,6 +2529,11 @@ export class VirtualSelect {
   /** get methods - end */
 
   initDropboxPopover() {
+    // Calculate max height based on options count and option height
+    const optionHeight = parseInt(this.optionHeight) || 40;
+    const searchHeight = this.search ? 40 : 0;
+    const maxHeight = (this.optionsCount * optionHeight) + searchHeight;
+
     const data = {
       ele: this.$ele,
       target: this.$dropboxContainer,
@@ -2497,6 +2541,8 @@ export class VirtualSelect {
       zIndex: this.zIndex,
       margin: 4,
       transitionDistance: 0,
+      borderRadiusOffset: this.borderRadiusOffset,
+      maxHeight: maxHeight,
       showDuration: 0,
       hideDuration: 0,
       hideArrowIcon: true,
@@ -2568,7 +2614,14 @@ export class VirtualSelect {
 
     if (this.dropboxPopover && !isSilent) {
       this.dropboxPopover.show();
-    } else {
+
+      // Set position class immediately after show() since resetPosition runs synchronously
+      // This ensures correct border-radius styling from the start of the animation
+      const resolvedPosition = this.dropboxPopover?.popper?.resolvedPosition;
+      if (resolvedPosition) {
+        DomUtils.removeClass(this.$allWrappers, 'position-top position-bottom position-left position-right');
+        DomUtils.addClass(this.$allWrappers, `position-${resolvedPosition}`);
+      }    } else {
       this.afterShowPopper();
     }
   }
@@ -2581,6 +2634,16 @@ export class VirtualSelect {
       this.moveSelectedOptionsFirst();
       this.setScrollTop();
       DomUtils.addClass(this.$allWrappers, 'focused');
+
+      // Position class is set in openDropbox() right after show() returns
+      // This is a fallback for edge cases where it wasn't set
+      const hasPositionClass = ['top', 'bottom', 'left', 'right'].some(
+        (pos) => DomUtils.hasClass(this.$allWrappers, `position-${pos}`)
+      );
+      if (!hasPositionClass) {
+        const resolvedPosition = this.dropboxPopover?.popper?.resolvedPosition || 'bottom';
+        DomUtils.addClass(this.$allWrappers, `position-${resolvedPosition}`);
+      }
 
       if (this.showAsPopup) {
         DomUtils.addClass(this.$body, 'vscomp-popup-active');
@@ -2654,6 +2717,10 @@ export class VirtualSelect {
     this.isSilentClose = false;
 
     DomUtils.removeClass(this.$allWrappers, 'focused');
+
+    // Remove all position classes from wrapper
+    DomUtils.removeClass(this.$allWrappers, 'position-top position-bottom position-left position-right');
+
     this.removeOptionFocus();
 
     if (!isSilent && this.isPopupActive) {
@@ -3278,10 +3345,34 @@ export class VirtualSelect {
 
   isOptionVisible({ data, searchValue, hasExactOption, visibleOptionGroupsMapping, searchGroup, searchByStartsWith, searchIndexResults }) {
     const value = data.value.toLowerCase();
-    const label = (this.searchNormalize && data.labelNormalized != null)
-      ? data.labelNormalized
-      : (data.label || '').trim().toLowerCase();
-    const { description, alias } = data;
+    
+    // Lazily compute and cache normalized label for diacritic-insensitive search
+    let label;
+    if (this.searchNormalize) {
+      // Compute labelNormalized on first access (lazy)
+      if (data.labelNormalized === undefined) {
+        const rawLabel = (data.label || '').trim();
+        // eslint-disable-next-line no-param-reassign
+        data.labelNormalized = rawLabel ? Utils.normalizeString(rawLabel).toLowerCase() : '';
+      }
+      label = data.labelNormalized;
+    } else {
+      label = (data.label || '').trim().toLowerCase();
+    }
+    
+    const { description } = data;
+    
+    // Lazily compute and cache normalized alias
+    let alias;
+    if (this.searchNormalize && data.alias) {
+      if (data.aliasNormalized === undefined) {
+        // eslint-disable-next-line no-param-reassign
+        data.aliasNormalized = Utils.normalizeString(data.alias).toLowerCase();
+      }
+      alias = data.aliasNormalized;
+    } else {
+      alias = data.alias;
+    }
 
     let isVisible;
 
@@ -3306,7 +3397,11 @@ export class VirtualSelect {
       }
 
       if (!searchByStartsWith && description && !isVisible) {
-        isVisible = description.toLowerCase().includes(searchValue);
+        // Lazily normalize description for search
+        const descNormalized = this.searchNormalize 
+          ? Utils.normalizeString(description).toLowerCase()
+          : description.toLowerCase();
+        isVisible = descNormalized.includes(searchValue);
       }
     }
 

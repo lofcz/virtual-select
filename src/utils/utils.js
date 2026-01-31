@@ -151,13 +151,17 @@ export class Utils {
   }
 
   /**
+   * Removes diacritical marks from a string for accent-insensitive comparison.
+   * E.g., "café" -> "cafe", "naïve" -> "naive", "Přestup" -> "Prestup"
    * @param {string} text
    * @return {string}
    * @memberof Utils
    */
   static normalizeString(text) {
-    const NON_WORD_REGEX = /[^\w]/g;
-    return text.normalize('NFD').replace(NON_WORD_REGEX, '');
+    // NFD decomposes characters: "á" becomes "a" + combining acute accent
+    // Then we remove only the combining diacritical marks (U+0300 to U+036F)
+    // This preserves spaces, punctuation, and other characters
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
   /**
@@ -209,5 +213,34 @@ export class Utils {
    */
   static containsHTMLorJS(text) {
     return /<([a-z]+)[\s\S]*?>|on\w+="[^"]*"/i.test(text);
+  }
+
+  /**
+   * Throttle function to limit how often a function can fire
+   * @static
+   * @param {Function} method - The function to throttle
+   * @param {number} delay - The throttle delay in milliseconds
+   * @return {Function}
+   * @memberof Utils
+   */
+  static throttle(method, delay) {
+    let prev = 0;
+    let timeout;
+
+    return (...args) => {
+      let now = new Date().getTime();
+      let remaining = delay - (now - prev);
+
+      clearTimeout(timeout);
+
+      if (remaining <= 0) {
+        prev = now;
+        method(...args);
+      } else {
+        timeout = setTimeout(() => {
+          method(...args);
+        }, remaining);
+      }
+    };
   }
 }

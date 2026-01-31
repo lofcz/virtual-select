@@ -7,8 +7,8 @@
 }
 
 .vscomp-ele {
+  font-family: v.$font-family;
   display: inline-block;
-  max-width: 250px;
   width: 100%;
 }
 
@@ -21,6 +21,9 @@
   position: relative;
   text-align: left;
   width: 100%;
+  height: v.$wrapper-height;
+  user-select: none;
+  outline: none;
 
   *,
   *::before,
@@ -40,100 +43,97 @@
 }
 
 .vscomp-toggle-button {
+  display: flex;
+  position: relative;
   align-items: center;
+  width: 100%;
+  padding: 7px v.$arrow-width 7px v.$toggle-button-padding-left;
+  cursor: pointer;
   background-color: v.$primary-bg;
   border: 1px solid v.$border-color;
-  cursor: pointer;
-  display: flex;
-  padding: 7px v.$arrow-width 7px 10px;
-  position: relative;
-  width: 100%;
+  border-radius: 5px;
+  line-height: calc(2.2em + 0.75rem);
 }
 
 .vscomp-value {
+  width: 100%;
   height: 20px;
-  line-height: 20px;
-  max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+  color: black;
+  font-family: v.$font-family;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
 }
 
 .vscomp-arrow {
-  align-items: center;
-  display: flex;
-  height: 100%;
-  justify-content: center;
   position: absolute;
-  right: 0;
+  display: flex;
   top: 0;
+  right: 0;
   width: v.$arrow-width;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
 
   &::after {
-    @include m.prefix(transform, rotate(45deg));
-    border: 1px solid transparent;
-    border-bottom-color: v.$arrow-color;
-    border-right-color: v.$arrow-color;
+    display: inline-block;
+    position: relative;
+    left: -0.5rem;
+    width: 2rem;
+    height: 2rem;
     content: '';
-    height: v.$arrow-size;
-    margin-top: -6px;
-    width: v.$arrow-size;
+    background-image: url(v.$arrow-icon-svg);
+    background-size: 2rem 2rem;
+    background-position: center center;
+    background-repeat: no-repeat;
   }
 }
 
 .vscomp-clear-icon {
-  height: v.$clear-icon-size;
-  position: relative;
-  width: v.$clear-icon-size;
-
-  &::before,
-  &::after {
-    background-color: #999;
-    content: '';
-    height: v.$clear-icon-size;
-    left: 5px;
-    position: absolute;
-    top: 0;
-    width: 2px;
-  }
-
-  &::before {
-    @include m.prefix(transform, rotate(45deg));
-  }
-
-  &::after {
-    @include m.prefix(transform, rotate(-45deg));
-  }
-
-  &:hover {
-    &::before,
-    &::after {
-      background: v.$icon-hover-color;
-    }
-  }
+  // SVG background is used instead of CSS-drawn lines
+  // The icon is set on the parent .vscomp-clear-button
+  display: none;
 }
 
 .vscomp-clear-button {
+  position: absolute;
+  display: none;
+  top: 50%;
+  right: 30px;
+  width: 24px;
+  height: 24px;
+  justify-content: center;
   align-items: center;
   border-radius: 50%;
-  display: none;
-  height: v.$clear-button-width;
-  justify-content: center;
-  margin-top: math.div(v.$clear-button-width, -2);
-  position: absolute;
-  right: v.$arrow-width;
-  top: 50%;
-  width: v.$clear-button-width;
+  margin-top: -12px;
+  background-size: 1.5rem 1.5rem;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-color: white;
+  margin-right: 6px;
+  background-image: url(v.$clear-icon-svg);
 
   &:hover {
-    background: v.$focus-color;
+    background-image: url(v.$clear-icon-hover-svg);
+  }
 
-    .vscomp-clear-icon {
-      &::before,
-      &::after {
-        background-color: v.$icon-hover-color;
-      }
-    }
+  // Remove default CSS-based clear icon since we use SVG background
+  &::before,
+  &::after {
+    content: '';
+    display: none;
+  }
+
+  &.neverRender {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
 
@@ -161,17 +161,32 @@
 .vscomp-dropbox-container {
   width: 100%;
   z-index: v.$z-index + 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .vscomp-dropbox {
   background-color: v.$primary-bg;
   width: 100%;
+  border: 1px solid v.$border-color;
+  border-top: none;
+  z-index: 1;
+  @include m.prefix(transition-duration, 0ms);
+  border-bottom-right-radius: 5px;
+  border-bottom-left-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .vscomp-options-container {
   max-height: #{v.$dropbox-height - v.$search-height};
   overflow: auto;
   position: relative;
+  margin-top: 1px;
+  margin-bottom: 1px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .vscomp-options-bottom-freezer {
@@ -186,17 +201,22 @@
   align-items: center;
   cursor: pointer;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   height: v.$option-height;
   padding: 0 15px;
   position: relative;
+  color: v.$font-color;
+  user-select: none;
+  outline: none;
 
   &.selected {
     background-color: v.$selected-color;
+    color: var(--scBlack, #000);
   }
 
   &.focused {
-    background-color: v.$focus-color;
+    background-color: v.$selected-color;
+    color: var(--scBlack, #000);
   }
 
   &.disabled {
@@ -256,6 +276,8 @@
   @include m.ellipse;
   user-select: none;
   width: 100%;
+  display: flex;
+  flex-flow: column;
 }
 
 .vscomp-option-description {
@@ -266,13 +288,19 @@
   width: 100%;
 }
 
+.vscomp-option.selected .vscomp-option-description,
+.vscomp-option.focused .vscomp-option-description {
+  color: #676767;
+}
+
 .vscomp-search-container {
   align-items: center;
-  border-bottom: 1px solid v.$border-color;
+  border-bottom: 1px solid v.$checkbox-color;
   display: flex;
   height: v.$search-height;
   padding: 0 5px 0 15px;
   position: relative;
+  background-color: white;
 }
 
 .vscomp-search-label,
@@ -293,7 +321,7 @@
 .vscomp-search-input {
   background-color: transparent;
   border: 0;
-  color: inherit;
+  color: black;
   font-size: 15px;
   height: #{v.$search-height - 2px};
   padding: 10px 0;
@@ -315,6 +343,7 @@
   user-select: none;
   visibility: hidden;
   width: v.$search-clear-width;
+  position: relative;
 
   &:hover {
     color: inherit;
@@ -327,6 +356,8 @@
   display: none;
   justify-content: center;
   padding: 20px 10px;
+  color: v.$font-color;
+  text-align: center;
 }
 
 .vscomp-options-loader {
@@ -362,14 +393,15 @@
 .vscomp-wrapper {
   .checkbox-icon {
     display: inline-flex;
-    height: 15px;
+    height: 24px;
+    width: 24px;
+    border: 2px solid v.$checkbox-color;
+    border-radius: 6px;
     margin-right: v.$option-checkbox-margin;
     position: relative;
-    width: 15px;
 
     &::after {
-      @include m.prefix(transition-duration, 0.2s);
-      border: 2px solid v.$checkbox-color;
+      @include m.prefix(transition-duration, 0s);
       content: '';
       display: inline-block;
       height: 100%;
@@ -377,8 +409,17 @@
     }
 
     &.checked::after {
-      @include m.checkbox-checked;
+      background: url(v.$check-icon-svg) no-repeat center center / contain;
+      border-color: v.$primary-color;
+      border-left-color: transparent;
+      border-top-color: transparent;
+      width: 100%;
     }
+  }
+
+  &.opened .vscomp-toggle-button {
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
   }
 
   &.show-as-popup {
@@ -395,6 +436,7 @@
       position: fixed;
       top: 0;
       width: 100vw;
+      z-index: 100000 !important;
     }
 
     .vscomp-dropbox {
@@ -403,6 +445,7 @@
       max-width: 500px;
       position: relative;
       width: 80%;
+      border-top: 1px solid;
     }
 
     .vscomp-dropbox-close-button {
@@ -453,6 +496,7 @@
     .vscomp-option {
       .vscomp-option-text {
         width: calc(100% - #{v.$checkbox-full-width});
+        display: flex;
       }
 
       .vscomp-option-description {
@@ -460,7 +504,11 @@
       }
 
       &.selected .checkbox-icon::after {
-        @include m.checkbox-checked;
+        background: url(v.$check-icon-svg) no-repeat center center / contain;
+        border-color: v.$primary-color;
+        border-left-color: transparent;
+        border-top-color: transparent;
+        width: 100%;
       }
     }
   }
@@ -468,8 +516,68 @@
   &.focused,
   &:focus {
     .vscomp-toggle-button {
-      box-shadow: v.$box-shadow1;
+      box-shadow: v.$focus-shadow;
     }
+  }
+
+  // When dropdown opens at the bottom (default), remove bottom border radius for seamless look
+  &.focused.position-bottom,
+  &:focus.position-bottom {
+    .vscomp-toggle-button {
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
+
+  // When dropdown opens at the top, remove top border radius from toggle for seamless look
+  // Dropdown needs top border-radius (outer edge) and no bottom border-radius (connects to toggle)
+  &.focused.position-top,
+  &:focus.position-top {
+    .vscomp-toggle-button {
+      border-top-right-radius: 0;
+      border-top-left-radius: 0;
+    }
+
+    .vscomp-dropbox {
+      // Top edge is outer - needs radius and border
+      border-top-right-radius: 5px;
+      border-top-left-radius: 5px;
+      border-top: 1px solid v.$border-color;
+      // Bottom edge connects to toggle - no radius, no border
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+      border-bottom: none;
+    }
+  }
+
+  // When dropdown opens to the left, remove left border radius
+  &.focused.position-left,
+  &:focus.position-left {
+    .vscomp-toggle-button {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
+
+  // When dropdown opens to the right, remove right border radius
+  &.focused.position-right,
+  &:focus.position-right {
+    .vscomp-toggle-button {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  // Keep border radius for popover mode (show-as-popup)
+  &.show-as-popup.focused,
+  &.show-as-popup:focus {
+    .vscomp-toggle-button {
+      border-radius: 5px;
+    }
+  }
+
+  &.focused .vscomp-arrow::after {
+    @include m.prefix(transform, rotate(180deg));
   }
 
   &.closed {
@@ -481,13 +589,20 @@
 
   &:not(.has-value) {
     .vscomp-value {
-      opacity: 0.5;
+      opacity: 0.7;
+      font-size: 13px;
+      line-height: 20px;
     }
+  }
+
+  &.has-value .vscomp-toggle-button {
+    background-color: white;
   }
 
   &.has-clear-button {
     &.has-value .vscomp-clear-button {
       display: flex;
+      visibility: visible;
     }
 
     .vscomp-toggle-button {
@@ -653,4 +768,9 @@
       }
     }
   }
+}
+
+// Additional helper class for options with description
+.vscompWithDescription {
+  flex-flow: wrap;
 }

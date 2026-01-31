@@ -56,7 +56,7 @@ export class DomUtils {
   }
 
   /**
-   * @param {HTMLElement} $ele
+   * @param {HTMLElement | HTMLElement[]} $ele
    * @param {string} className
    * @returns {boolean}
    */
@@ -65,7 +65,8 @@ export class DomUtils {
       return false;
     }
 
-    return $ele.classList.contains(className);
+    const elements = DomUtils.getElements($ele);
+    return elements.some(($el) => $el.classList.contains(className));
   }
 
   /**
@@ -328,10 +329,10 @@ export class DomUtils {
   }
 
   /**
- * @param {HTMLElement} $ele
- * @param {string} event
- * @param {Function} callback
- */
+   * @param {HTMLElement} $ele
+   * @param {string} event
+   * @param {Function} callback
+   */
   static removeEvent($ele, event, callback) {
     if (!$ele) {
       return;
@@ -342,5 +343,124 @@ export class DomUtils {
     $eleArray.forEach(($this) => {
       $this.removeEventListener(event, callback);
     });
+  }
+
+  /**
+   * Get single element from selector string or return element
+   * @param {string|HTMLElement} $ele
+   * @return {HTMLElement|null}
+   */
+  static getElement($ele) {
+    if ($ele) {
+      if (typeof $ele === 'string') {
+        $ele = document.querySelector($ele);
+      } else if ($ele.length !== undefined) {
+        $ele = $ele[0];
+      }
+    }
+
+    return $ele || null;
+  }
+
+  /**
+   * Show an element
+   * @param {HTMLElement} $ele
+   * @param {string} [value='block'] - CSS display value
+   */
+  static show($ele, value = 'block') {
+    DomUtils.setStyle($ele, 'display', value);
+  }
+
+  /**
+   * Hide an element
+   * @param {HTMLElement} $ele
+   */
+  static hide($ele) {
+    DomUtils.setStyle($ele, 'display', 'none');
+  }
+
+  /**
+   * Get bounding client rect coordinates
+   * @param {HTMLElement} $ele
+   * @return {DOMRect|{}}
+   */
+  static getCoords($ele) {
+    return $ele ? $ele.getBoundingClientRect() : {};
+  }
+
+  /**
+   * Get absolute coordinates including scroll position
+   * @param {HTMLElement} $ele
+   * @return {Object|undefined}
+   */
+  static getAbsoluteCoords($ele) {
+    if (!$ele) {
+      return undefined;
+    }
+
+    let box = $ele.getBoundingClientRect();
+    let pageX = window.pageXOffset;
+    let pageY = window.pageYOffset;
+
+    return {
+      width: box.width,
+      height: box.height,
+      top: box.top + pageY,
+      right: box.right + pageX,
+      bottom: box.bottom + pageY,
+      left: box.left + pageX,
+    };
+  }
+
+  /**
+   * Get which sides of an element are more visible in the viewport
+   * @param {HTMLElement} $ele
+   * @return {Object}
+   */
+  static getMoreVisibleSides($ele) {
+    if (!$ele) {
+      return {};
+    }
+
+    let box = $ele.getBoundingClientRect();
+    let availableWidth = window.innerWidth;
+    let availableHeight = window.innerHeight;
+    let leftArea = box.left;
+    let topArea = box.top;
+    let rightArea = availableWidth - leftArea - box.width;
+    let bottomArea = availableHeight - topArea - box.height;
+    let horizontal = leftArea > rightArea ? 'left' : 'right';
+    let vertical = topArea > bottomArea ? 'top' : 'bottom';
+
+    return {
+      horizontal,
+      vertical,
+    };
+  }
+
+  /**
+   * Get all scrollable parent elements
+   * @param {HTMLElement} $ele
+   * @return {Array}
+   */
+  static getScrollableParents($ele) {
+    if (!$ele) {
+      return [];
+    }
+
+    let $scrollableElems = [window];
+    let $parent = $ele.parentElement;
+
+    while ($parent) {
+      let overflowValue = getComputedStyle($parent).overflow;
+
+      if (overflowValue.indexOf('scroll') !== -1 || overflowValue.indexOf('auto') !== -1) {
+        $scrollableElems.push($parent);
+      }
+
+      $parent = $parent.parentElement;
+    }
+
+    return $scrollableElems;
   }
 }
